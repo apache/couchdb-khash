@@ -16,7 +16,6 @@ typedef struct
 {
     ERL_NIF_TERM atom_ok;
     ERL_NIF_TERM atom_error;
-    ERL_NIF_TERM atom_shared;
     ERL_NIF_TERM atom_value;
     ERL_NIF_TERM atom_not_found;
     ErlNifResourceType* res_hash;
@@ -36,7 +35,6 @@ typedef struct
     int version;
     hash_t* h;
     ErlNifPid p;
-    ErlNifMutex* l;
 } khash_t;
 
 
@@ -73,71 +71,16 @@ make_error(ErlNifEnv* env, khash_priv* priv, ERL_NIF_TERM reason)
 
 
 static inline int
-has_option(ErlNifEnv* env, ERL_NIF_TERM opts, ERL_NIF_TERM opt)
-{
-    ERL_NIF_TERM head;
-    ERL_NIF_TERM tail = opts;
-    const ERL_NIF_TERM* elems;
-    int arity;
-
-    if(!enif_is_list(env, opts)) {
-        return 0;
-    }
-
-    while(enif_get_list_cell(env, tail, &head, &tail)) {
-        if(enif_compare(head, opt) == 0) {
-            return 1;
-        }
-
-        if(!enif_is_tuple(env, head)) {
-            continue;
-        }
-
-        if(!enif_get_tuple(env, head, &arity, &elems)) {
-            continue;
-        }
-
-        if(arity == 0) {
-            continue;
-        }
-
-        if(enif_compare(elems[0], opt)) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-
-static inline int
-lock_hash(ErlNifEnv* env, khash_t* khash)
+check_pid(ErlNifEnv* env, khash_t* khash)
 {
     ErlNifPid pid;
-
-    // shared hash
-    if(khash->l != NULL) {
-        enif_mutex_lock(khash->l);
-        return 1;
-    }
-
-    // Else check that we're being called from the pid
-    // that created the hash.
     enif_self(env, &pid);
+
     if(enif_compare(pid.pid, khash->p.pid) == 0) {
         return 1;
     }
 
     return 0;
-}
-
-
-static inline void
-unlock_hash(ErlNifEnv* env, khash_t* khash)
-{
-    if(khash->l != NULL) {
-        enif_mutex_unlock(khash->l);
-    }
 }
 
 
@@ -214,12 +157,6 @@ khash_create_int(ErlNifEnv* env, khash_priv* priv, ERL_NIF_TERM opts)
     kl_hash_set_allocator(khash->h, khnode_alloc, khnode_free, NULL);
     enif_self(env, &(khash->p));
 
-    if(has_option(env, opts, priv->atom_shared)) {
-        khash->l = enif_mutex_create(NULL);
-    } else {
-        khash->l = NULL;
-    }
-
     return khash;
 }
 
@@ -257,10 +194,6 @@ khash_free(ErlNifEnv* env, void* obj)
         kl_hash_destroy(khash->h);
     }
 
-    if(khash->l != NULL) {
-        enif_mutex_destroy(khash->l);
-    }
-
     return;
 }
 
@@ -286,7 +219,7 @@ khash_to_list(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!lock_hash(env, khash)) {
+    if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
     }
 
@@ -299,8 +232,6 @@ khash_to_list(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         tuple = enif_make_tuple2(env, key, val);
         ret = enif_make_list_cell(env, tuple, ret);
     }
-
-    unlock_hash(env, khash);
 
     return ret;
 }
@@ -320,13 +251,11 @@ khash_clear(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!lock_hash(env, khash)) {
+    if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
     }
 
     kl_hash_free_nodes(khash->h);
-
-    unlock_hash(env, khash);
 
     return priv->atom_ok;
 }
@@ -359,7 +288,7 @@ khash_lookup(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!lock_hash(env, khash)) {
+    if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
     }
 
@@ -371,8 +300,6 @@ khash_lookup(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         ret = enif_make_copy(env, node->val);
         ret = enif_make_tuple2(env, priv->atom_value, ret);
     }
-
-    unlock_hash(env, khash);
 
     return ret;
 }
@@ -395,7 +322,7 @@ khash_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!lock_hash(env, khash)) {
+    if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
     }
 
@@ -406,8 +333,6 @@ khash_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         node = (khnode_t*) kl_hnode_getkey(entry);
         ret = enif_make_copy(env, node->val);
     }
-
-    unlock_hash(env, khash);
 
     return ret;
 }
@@ -429,7 +354,7 @@ khash_put(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!lock_hash(env, khash)) {
+    if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
     }
 
@@ -446,8 +371,6 @@ khash_put(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         node->key = enif_make_copy(node->env, argv[1]);
         node->val = enif_make_copy(node->env, argv[2]);
     }
-
-    unlock_hash(env, khash);
 
     return priv->atom_ok;
 }
@@ -469,7 +392,7 @@ khash_del(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!lock_hash(env, khash)) {
+    if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
     }
 
@@ -481,8 +404,6 @@ khash_del(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         ret = priv->atom_ok;
     }
 
-    unlock_hash(env, khash);
-
     return ret;
 }
 
@@ -492,7 +413,6 @@ khash_size(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
     khash_t* khash;
-    ERL_NIF_TERM ret;
 
     if(argc != 1) {
         return enif_make_badarg(env);
@@ -502,15 +422,11 @@ khash_size(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!lock_hash(env, khash)) {
+    if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
     }
 
-    ret = enif_make_uint64(env, kl_hash_count(khash->h));
-
-    unlock_hash(env, khash);
-
-    return ret;
+    return enif_make_uint64(env, kl_hash_count(khash->h));
 }
 
 
@@ -535,7 +451,6 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 
     new_priv->atom_ok = make_atom(env, "ok");
     new_priv->atom_error = make_atom(env, "error");
-    new_priv->atom_shared = make_atom(env, "shared");
     new_priv->atom_value = make_atom(env, "value");
     new_priv->atom_not_found = make_atom(env, "not_found");
 

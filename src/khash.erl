@@ -27,7 +27,7 @@
 
 -type kv() :: {any(), any()}.
 -type hash() :: term().
--type option() :: [shared].
+-type option() :: [].
 
 
 -spec new() -> {ok, hash()}.
