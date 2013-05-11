@@ -1,0 +1,4 @@
+c_src/*.o
+ebin/
+test/*.beam
+priv/*.so
