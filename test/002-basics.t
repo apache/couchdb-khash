@@ -5,17 +5,15 @@
 
 -mode(compile).
 
-num_cycles() -> 10000.
-
 main([]) ->
     code:add_pathz("test"),
     util:run(12, fun() ->
-        test_basic(),
+        test(),
         ok
     end).
 
 
-test_basic() ->
+test() ->
     {ok, C} = khash:new(),
     etap:is(khash:lookup(C, <<"foo">>), not_found, "Lookup missing is ok"),
     etap:is(khash:get(C, <<"foo">>), undefined, "Get missing is ok"),
