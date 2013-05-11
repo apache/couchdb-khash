@@ -18,7 +18,10 @@ typedef struct
     ERL_NIF_TERM atom_error;
     ERL_NIF_TERM atom_value;
     ERL_NIF_TERM atom_not_found;
+    ERL_NIF_TERM atom_end_of_table;
+    ERL_NIF_TERM atom_expired_iterator;
     ErlNifResourceType* res_hash;
+    ErlNifResourceType* res_iter;
 } khash_priv;
 
 
@@ -33,9 +36,19 @@ typedef struct
 typedef struct
 {
     int version;
+    unsigned int gen;
     hash_t* h;
     ErlNifPid p;
 } khash_t;
+
+
+typedef struct
+{
+    int version;
+    unsigned int gen;
+    khash_t* khash;
+    hscan_t scan;
+} khash_iter_t;
 
 
 // This is actually an internal Erlang VM function that
@@ -146,6 +159,7 @@ khash_create_int(ErlNifEnv* env, khash_priv* priv, ERL_NIF_TERM opts)
     khash = (khash_t*) enif_alloc_resource(priv->res_hash, sizeof(khash_t));
     memset(khash, '\0', sizeof(khash_t));
     khash->version = KHASH_VERSION;
+    khash->gen = 0;
 
     khash->h = kl_hash_create(HASHCOUNT_T_MAX, khash_cmp_fun, khash_hash_fun);
 
@@ -256,6 +270,8 @@ khash_clear(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     kl_hash_free_nodes(khash->h);
+
+    khash->gen += 1;
 
     return priv->atom_ok;
 }
@@ -372,6 +388,8 @@ khash_put(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         node->val = enif_make_copy(node->env, argv[2]);
     }
 
+    khash->gen += 1;
+
     return priv->atom_ok;
 }
 
@@ -404,6 +422,8 @@ khash_del(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         ret = priv->atom_ok;
     }
 
+    khash->gen += 1;
+
     return ret;
 }
 
@@ -430,6 +450,91 @@ khash_size(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 
+static ERL_NIF_TERM
+khash_iter(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    khash_priv* priv = enif_priv_data(env);
+    khash_t* khash;
+    khash_iter_t* iter;
+    ERL_NIF_TERM ret;
+
+    if(argc != 1) {
+        return enif_make_badarg(env);
+    }
+
+    if(!enif_get_resource(env, argv[0], priv->res_hash, (void**) &khash)) {
+        return enif_make_badarg(env);
+    }
+
+    if(!check_pid(env, khash)) {
+        return enif_make_badarg(env);
+    }
+
+    iter = (khash_iter_t*) enif_alloc_resource(
+                priv->res_iter, sizeof(khash_iter_t));
+    memset(iter, '\0', sizeof(khash_iter_t));
+    iter->version = KHASH_VERSION;
+    iter->gen = khash->gen;
+    iter->khash = khash;
+    kl_hash_scan_begin(&(iter->scan), iter->khash->h);
+
+    // The iterator needs to guarantee that the khash
+    // remains alive for the life of the iterator.
+    enif_keep_resource(khash);
+
+    ret = enif_make_resource(env, iter);
+    enif_release_resource(iter);
+
+    return make_ok(env, priv, ret);
+}
+
+
+static void
+khash_iter_free(ErlNifEnv* env, void* obj)
+{
+    khash_iter_t* iter = (khash_iter_t*) obj;
+    enif_release_resource(iter);
+}
+
+
+static ERL_NIF_TERM
+khash_iter_next(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    khash_priv* priv = enif_priv_data(env);
+    khash_iter_t* iter;
+    hnode_t* entry;
+    khnode_t* node;
+    ERL_NIF_TERM key;
+    ERL_NIF_TERM val;
+
+    if(argc != 1) {
+        return enif_make_badarg(env);
+    }
+
+    if(!enif_get_resource(env, argv[0], priv->res_iter, (void**) &iter)) {
+        return enif_make_badarg(env);
+    }
+
+    if(!check_pid(env, iter->khash)) {
+        return enif_make_badarg(env);
+    }
+
+    if(iter->gen != iter->khash->gen) {
+        return make_error(env, priv, priv->atom_expired_iterator);
+    }
+
+    entry = kl_hash_scan_next(&(iter->scan));
+    if(entry == NULL) {
+        return priv->atom_end_of_table;
+    }
+
+    node = (khnode_t*) kl_hnode_getkey(entry);
+    key = enif_make_copy(env, node->key);
+    val = enif_make_copy(env, node->val);
+    return enif_make_tuple2(env, key, val);
+}
+
+
 static int
 load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 {
@@ -442,17 +547,24 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
         return 1;
     }
 
-    res = enif_open_resource_type(env, mod, mod, khash_free, flags, NULL);
+    res = enif_open_resource_type(env, mod, "", khash_free, flags, NULL);
     if(res == NULL) {
         return 1;
     }
-
     new_priv->res_hash = res;
+
+    res = enif_open_resource_type(env, mod, "", khash_iter_free, flags, NULL);
+    if(res == NULL) {
+        return 1;
+    }
+    new_priv->res_iter = res;
 
     new_priv->atom_ok = make_atom(env, "ok");
     new_priv->atom_error = make_atom(env, "error");
     new_priv->atom_value = make_atom(env, "value");
     new_priv->atom_not_found = make_atom(env, "not_found");
+    new_priv->atom_end_of_table = make_atom(env, "end_of_table");
+    new_priv->atom_expired_iterator = make_atom(env, "expired_iterator");
 
     *priv = (void*) new_priv;
 
@@ -491,6 +603,8 @@ static ErlNifFunc funcs[] = {
     {"put", 3, khash_put},
     {"del", 2, khash_del},
     {"size", 1, khash_size},
+    {"iter", 1, khash_iter},
+    {"iter_next", 1, khash_iter_next}
 };
 
 

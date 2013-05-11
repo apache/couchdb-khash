@@ -18,7 +18,10 @@
     get/3,
     put/3,
     del/2,
-    size/1
+    size/1,
+    iter/1,
+    iter_next/1,
+    fold/3
 ]).
 
 
@@ -26,26 +29,27 @@
 
 
 -type kv() :: {any(), any()}.
--type hash() :: term().
+-type khash() :: term().
+-type khash_iter() :: term().
 -type option() :: [].
 
 
--spec new() -> {ok, hash()}.
+-spec new() -> {ok, khash()}.
 new() ->
     new([]).
 
 
--spec new([option()]) -> {ok, hash()}.
+-spec new([option()]) -> {ok, khash()}.
 new(_Options) ->
     ?NOT_LOADED.
 
 
--spec from_list([kv()]) -> {ok, hash()}.
+-spec from_list([kv()]) -> {ok, khash()}.
 from_list(KVList) ->
     from_list(KVList, []).
 
 
--spec from_list([kv()], [option()]) -> {ok, hash()}.
+-spec from_list([kv()], [option()]) -> {ok, khash()}.
 from_list(KVList, Options) ->
     {ok, Hash} = ?MODULE:new(Options),
     lists:foreach(fun({Key, Val}) ->
@@ -54,44 +58,71 @@ from_list(KVList, Options) ->
     {ok, Hash}.
 
 
--spec to_list(hash()) -> [kv()].
+-spec to_list(khash()) -> [kv()].
 to_list(_Hash) ->
     ?NOT_LOADED.
 
 
--spec clear(hash()) -> ok.
+-spec clear(khash()) -> ok.
 clear(_Hash) ->
     ?NOT_LOADED.
 
 
--spec lookup(hash(), any()) -> {value, any()} | not_found.
+-spec lookup(khash(), any()) -> {value, any()} | not_found.
 lookup(_Hash, _Key) ->
     ?NOT_LOADED.
 
 
--spec get(hash(), any()) -> any().
+-spec get(khash(), any()) -> any().
 get(Hash, Key) ->
     get(Hash, Key, undefined).
 
 
--spec get(hash(), any(), any()) -> any().
+-spec get(khash(), any(), any()) -> any().
 get(_Hash, _Key, _Default) ->
     ?NOT_LOADED.
 
 
--spec put(hash(), any(), any()) -> ok.
+-spec put(khash(), any(), any()) -> ok.
 put(_Hash, _Key, _Value) ->
     ?NOT_LOADED.
 
 
--spec del(hash(), any()) -> ok.
+-spec del(khash(), any()) -> ok.
 del(_Hash, _Key) ->
     ?NOT_LOADED.
 
 
--spec size(hash()) -> non_neg_integer().
+-spec size(khash()) -> non_neg_integer().
 size(_Hash) ->
     ?NOT_LOADED.
+
+
+-spec iter(khash()) -> {ok, khash_iter()}.
+iter(_Hash) ->
+    ?NOT_LOADED.
+
+
+-spec iter_next(khash_iter()) ->
+        kv() | end_of_table | {error, expired_iterator}.
+iter_next(_Iter) ->
+    ?NOT_LOADED.
+
+
+-spec fold(khash(), fun(), any()) -> any().
+fold(Hash, FoldFun, Acc) ->
+    {ok, Iter} = ?MODULE:iter(Hash),
+    fold_int(Iter, FoldFun, Acc).
+
+
+fold_int(Iter, FoldFun, Acc) ->
+    case ?MODULE:iter_next(Iter) of
+        {Key, Value} ->
+            NewAcc = FoldFun(Key, Value, Acc),
+            fold_int(Iter, FoldFun, NewAcc);
+        end_of_table ->
+            Acc
+    end.
 
 
 init() ->
