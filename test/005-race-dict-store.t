@@ -20,8 +20,8 @@ main([]) ->
 
 
 test() ->
-    {DTime, _} = timer:tc(fun() -> test_dict() end),
-    {KTime, _} = timer:tc(fun() -> test_khash() end),
+    {DTime, _} = timer:tc(fun() -> test_dict() end, []),
+    {KTime, _} = timer:tc(fun() -> test_khash() end, []),
     etap:diag("Dict:  ~10b", [DTime]),
     etap:diag("KHash: ~10b", [KTime]),
     etap:is_greater(DTime, KTime, "Dict is slower than khash").
