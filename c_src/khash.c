@@ -493,7 +493,7 @@ static void
 khash_iter_free(ErlNifEnv* env, void* obj)
 {
     khash_iter_t* iter = (khash_iter_t*) obj;
-    enif_release_resource(iter);
+    enif_release_resource(iter->khash);
 }
 
 
@@ -538,7 +538,6 @@ khash_iter_next(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static int
 load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 {
-    const char* mod = "khash";
     int flags = ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER;
     ErlNifResourceType* res;
 
@@ -547,13 +546,15 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
         return 1;
     }
 
-    res = enif_open_resource_type(env, mod, "", khash_free, flags, NULL);
+    res = enif_open_resource_type(
+            env, NULL, "khash", khash_free, flags, NULL);
     if(res == NULL) {
         return 1;
     }
     new_priv->res_hash = res;
 
-    res = enif_open_resource_type(env, mod, "", khash_iter_free, flags, NULL);
+    res = enif_open_resource_type(
+            env, NULL, "khash_iter", khash_iter_free, flags, NULL);
     if(res == NULL) {
         return 1;
     }
