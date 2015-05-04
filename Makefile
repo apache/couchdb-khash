@@ -18,15 +18,15 @@ build:
 	$(REBAR) compile
 
 
-etap: test/etap.beam test/util.beam test/gen_term.beam
-	prove test/*.t
+eunit:
+	$(REBAR) eunit
 
 
-check: build etap
+check: build eunit
 
 
 %.beam: %.erl
 	erlc -o test/ $<
 
 
-.PHONY: all clean distclean build etap check
+.PHONY: all clean distclean build eunit check
