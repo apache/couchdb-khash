@@ -358,18 +358,18 @@ validate_randomized_state({D, H}) ->
     DKVs == HKVs.
 
 run_clear({_D0, H}) ->
-    ok = khash:clear(H),
+    ?assertMatch(ok, khash:clear(H)),
     {dict:new(), H}.
 
 run_get2({D, H}) ->
     K = random_key(D),
     case dict:find(K, D) of
         {ok, Value} ->
-            {value, Value} = khash:lookup(H, K),
-            Value = khash:get(H, K);
+            ?assertMatch({value, Value}, khash:lookup(H, K)),
+            ?assertMatch(Value, khash:get(H, K));
         error ->
-            not_found = khash:lookup(H, K),
-            undefined = khash:get(H, K)
+            ?assertMatch(not_found, khash:lookup(H, K)),
+            ?assertMatch(undefined, khash:get(H, K))
     end,
     {D, H}.
 
@@ -377,11 +377,11 @@ run_get3({D, H}) ->
     K = random_key(D),
     case dict:find(K, D) of
         {ok, Value} ->
-            {value, Value} = khash:lookup(H, K),
-            Value = khash:get(H, K);
+            ?assertMatch({value, Value}, khash:lookup(H, K)),
+            ?assertMatch(Value, khash:get(H, K));
         error ->
             Val = random_val(),
-            Val = khash:get(H, K, Val)
+            ?assertMatch(Val, khash:get(H, K, Val))
     end,
     {D, H}.
 
@@ -389,37 +389,36 @@ run_put({D0, H}) ->
     K = random_key(D0),
     V = random_val(),
     D1 = dict:store(K, V, D0),
-    ok = khash:put(H, K, V),
+    ?assertMatch(ok, khash:put(H, K, V)),
     {D1, H}.
 
 run_del({D0, H}) ->
     K = random_key(D0),
     D1 = case dict:is_key(K, D0) of
         true ->
-            ok = khash:del(H, K),
+            ?assertMatch(ok, khash:del(H, K)),
             dict:erase(K, D0);
         false ->
-            not_found = khash:del(H, K),
+            ?assertMatch(not_found, khash:del(H, K)),
             D0
     end,
     {D1, H}.
 
 run_size({D, H}) ->
-    S = dict:size(D),
-    S = khash:size(H),
+    ?assertEqual(dict:size(D), khash:size(H)),
     {D, H}.
 
 run_keys({D, H}) ->
-   DKeys = lists:sort(dict:fetch_keys(D)),
-   {ok, HKeys0} = khash:keys(H),
-   HKeys = lists:sort(HKeys0),
-   DKeys = HKeys,
-   {D, H}.
+    DKeys = dict:fetch_keys(D),
+    {ok, HKeys0} = khash:keys(H),
+    HKeys = lists:sort(HKeys0),
+    ?assertEqual(lists:sort(DKeys), lists:sort(HKeys)),
+    {D, H}.
 
 run_to_list({D, H}) ->
-    DKVs = lists:sort(dict:to_list(D)),
-    HKVs = lists:sort(khash:to_list(H)),
-    DKVs = HKVs,
+    DKVs = dict:to_list(D),
+    HKVs = khash:to_list(H),
+    ?assertEqual(lists:sort(DKVs), lists:sort(HKVs)),
     {D, H}.
 
 weighted_choice(Items0) ->
