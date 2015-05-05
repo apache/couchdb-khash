@@ -296,7 +296,7 @@ dict_fetch() ->
 dict_fetch(_, 0) ->
     ok;
 dict_fetch(Dict, NumCycles) ->
-    1 = dict:fetch(1, Dict),
+    ?assertMatch(1, dict:fetch(1, Dict)),
     dict_fetch(Dict, NumCycles - 1).
 
 khash_fetch() ->
@@ -308,7 +308,7 @@ khash_fetch() ->
 khash_fetch(_, 0) ->
     ok;
 khash_fetch(KHash, NumCycles) ->
-    1 = khash:get(KHash, 1),
+    ?assertMatch(1, khash:get(KHash, 1)),
     khash_fetch(KHash, NumCycles - 1).
 
 dict_store() ->
