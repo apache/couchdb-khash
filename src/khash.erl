@@ -69,8 +69,8 @@ clear(_Hash) ->
 
 
 -spec lookup(khash(), any()) -> {value, any()} | not_found.
-lookup(_Hash, _Key) ->
-    ?NOT_LOADED.
+lookup(Hash, Key) ->
+    lookup_int(Hash, erlang:phash2(Key), Key).
 
 
 -spec get(khash(), any()) -> any().
@@ -79,18 +79,18 @@ get(Hash, Key) ->
 
 
 -spec get(khash(), any(), any()) -> any().
-get(_Hash, _Key, _Default) ->
-    ?NOT_LOADED.
+get(Hash, Key, Default) ->
+    get_int(Hash, erlang:phash2(Key), Key, Default).
 
 
 -spec put(khash(), any(), any()) -> ok.
-put(_Hash, _Key, _Value) ->
-    ?NOT_LOADED.
+put(Hash, Key, Value) ->
+    put_int(Hash, erlang:phash2(Key), Key, Value).
 
 
 -spec del(khash(), any()) -> ok.
-del(_Hash, _Key) ->
-    ?NOT_LOADED.
+del(Hash, Key) ->
+    del_int(Hash, erlang:phash2(Key), Key).
 
 
 -spec size(khash()) -> non_neg_integer().
@@ -135,6 +135,22 @@ init() ->
             Path
     end,
     erlang:load_nif(filename:join(PrivDir, "khash"), 0).
+
+
+lookup_int(_Hash, _HashValue, _Key) ->
+    ?NOT_LOADED.
+
+
+get_int(_Hash, _HashValue, _Key, _Default) ->
+    ?NOT_LOADED.
+
+
+put_int(_Hash, _HashValue, _Key, _Value) ->
+    ?NOT_LOADED.
+
+
+del_int(_Hash, _HashValue, _Key) ->
+    ?NOT_LOADED.
 
 
 not_loaded(Line) ->

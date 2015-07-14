@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "erl_nif.h"
 #include "hash.h"
@@ -27,6 +28,7 @@ typedef struct
 
 typedef struct
 {
+    unsigned int hval;
     ErlNifEnv* env;
     ERL_NIF_TERM key;
     ERL_NIF_TERM val;
@@ -49,13 +51,6 @@ typedef struct
     khash_t* khash;
     hscan_t scan;
 } khash_iter_t;
-
-
-// This is actually an internal Erlang VM function that
-// we're being a bit hacky to get access to. There's a
-// pending patch to expose this in the NIF API in newer
-// Erlangs.
-unsigned int make_hash2(ERL_NIF_TERM term);
 
 
 static inline ERL_NIF_TERM
@@ -145,7 +140,7 @@ hash_val_t
 khash_hash_fun(const void* obj)
 {
     khnode_t* node = (khnode_t*) obj;
-    return (hash_val_t) make_hash2(node->key);
+    return (hash_val_t) node->hval;
 }
 
 
@@ -284,9 +279,10 @@ khash_clear(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
 
 static inline hnode_t*
-khash_lookup_int(ErlNifEnv* env, ERL_NIF_TERM key, khash_t* khash)
+khash_lookup_int(ErlNifEnv* env, uint32_t hv, ERL_NIF_TERM key, khash_t* khash)
 {
     khnode_t node;
+    node.hval = hv;
     node.env = env;
     node.key = key;
     return kl_hash_lookup(khash->h, &node);
@@ -298,12 +294,12 @@ khash_lookup(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
     khash_t* khash = NULL;
-    void* res = NULL;
+    uint32_t hval;
     hnode_t* entry;
     khnode_t* node;
     ERL_NIF_TERM ret;
 
-    if(argc != 2) {
+    if(argc != 3) {
         return enif_make_badarg(env);
     }
 
@@ -317,7 +313,11 @@ khash_lookup(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    entry = khash_lookup_int(env, argv[1], khash);
+    if(!enif_get_uint(env, argv[1], &hval)) {
+        return enif_make_badarg(env);
+    }
+
+    entry = khash_lookup_int(env, hval, argv[2], khash);
     if(entry == NULL) {
         ret = priv->atom_not_found;
     } else {
@@ -335,12 +335,12 @@ khash_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
     khash_t* khash = NULL;
-    void* res = NULL;
+    uint32_t hval;
     hnode_t* entry;
     khnode_t* node;
     ERL_NIF_TERM ret;
 
-    if(argc != 3) {
+    if(argc != 4) {
         return enif_make_badarg(env);
     }
 
@@ -354,9 +354,13 @@ khash_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    entry = khash_lookup_int(env, argv[1], khash);
+    if(!enif_get_uint(env, argv[1], &hval)) {
+        return enif_make_badarg(env);
+    }
+
+    entry = khash_lookup_int(env, hval, argv[2], khash);
     if(entry == NULL) {
-        ret = argv[2];
+        ret = argv[3];
     } else {
         node = (khnode_t*) kl_hnode_getkey(entry);
         ret = enif_make_copy(env, node->val);
@@ -371,9 +375,58 @@ khash_put(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
     khash_t* khash = NULL;
-    void* res = NULL;
+    uint32_t hval;
     hnode_t* entry;
     khnode_t* node;
+
+    if(argc != 4) {
+        return enif_make_badarg(env);
+    }
+
+    if(!enif_get_resource(env, argv[0], priv->res_hash, &res)) {
+        return enif_make_badarg(env);
+    }
+
+    khash = (khash_t*) res;
+
+    if(!check_pid(env, khash)) {
+        return enif_make_badarg(env);
+    }
+
+    if(!enif_get_uint(env, argv[1], &hval)) {
+        return enif_make_badarg(env);
+    }
+
+    entry = khash_lookup_int(env, hval, argv[2], khash);
+    if(entry == NULL) {
+        entry = khnode_alloc(NULL);
+        node = (khnode_t*) kl_hnode_getkey(entry);
+        node->hval = hval;
+        node->key = enif_make_copy(node->env, argv[2]);
+        node->val = enif_make_copy(node->env, argv[3]);
+        kl_hash_insert(khash->h, entry, node);
+    } else {
+        node = (khnode_t*) kl_hnode_getkey(entry);
+        enif_clear_env(node->env);
+        node->key = enif_make_copy(node->env, argv[2]);
+        node->val = enif_make_copy(node->env, argv[3]);
+    }
+
+    khash->gen += 1;
+
+    return priv->atom_ok;
+}
+
+
+static ERL_NIF_TERM
+khash_del(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    khash_priv* priv = enif_priv_data(env);
+    khash_t* khash = NULL;
+    void* res = NULL;
+    uint32_t hval;
+    hnode_t* entry;
+    ERL_NIF_TERM ret;
 
     if(argc != 3) {
         return enif_make_badarg(env);
@@ -389,50 +442,11 @@ khash_put(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    entry = khash_lookup_int(env, argv[1], khash);
-    if(entry == NULL) {
-        entry = khnode_alloc(NULL);
-        node = (khnode_t*) kl_hnode_getkey(entry);
-        node->key = enif_make_copy(node->env, argv[1]);
-        node->val = enif_make_copy(node->env, argv[2]);
-        kl_hash_insert(khash->h, entry, node);
-    } else {
-        node = (khnode_t*) kl_hnode_getkey(entry);
-        enif_clear_env(node->env);
-        node->key = enif_make_copy(node->env, argv[1]);
-        node->val = enif_make_copy(node->env, argv[2]);
-    }
-
-    khash->gen += 1;
-
-    return priv->atom_ok;
-}
-
-
-static ERL_NIF_TERM
-khash_del(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
-{
-    khash_priv* priv = enif_priv_data(env);
-    khash_t* khash = NULL;
-    void* res = NULL;
-    hnode_t* entry;
-    ERL_NIF_TERM ret;
-
-    if(argc != 2) {
+    if(!enif_get_uint(env, argv[1], &hval)) {
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_hash, &res)) {
-        return enif_make_badarg(env);
-    }
-
-    khash = (khash_t*) res;
-
-    if(!check_pid(env, khash)) {
-        return enif_make_badarg(env);
-    }
-
-    entry = khash_lookup_int(env, argv[1], khash);
+    entry = khash_lookup_int(env, hval, argv[2], khash);
     if(entry == NULL) {
         ret = priv->atom_not_found;
     } else {
@@ -623,10 +637,10 @@ static ErlNifFunc funcs[] = {
     {"new", 1, khash_new},
     {"to_list", 1, khash_to_list},
     {"clear", 1, khash_clear},
-    {"lookup", 2, khash_lookup},
-    {"get", 3, khash_get},
-    {"put", 3, khash_put},
-    {"del", 2, khash_del},
+    {"lookup_int", 3, khash_lookup},
+    {"get_int", 4, khash_get},
+    {"put_int", 4, khash_put},
+    {"del_int", 3, khash_del},
     {"size", 1, khash_size},
     {"iter", 1, khash_iter},
     {"iter_next", 1, khash_iter_next}
