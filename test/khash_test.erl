@@ -2,7 +2,6 @@
 
 -compile([export_all]).
 
--define(NODEBUG, true).
 -include_lib("eunit/include/eunit.hrl").
 
 -define(NUM_RAND_CYCLES, 10000).
