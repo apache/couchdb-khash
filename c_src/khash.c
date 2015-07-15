@@ -217,7 +217,8 @@ khash_to_list(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = (khash_priv*) enif_priv_data(env);
     ERL_NIF_TERM ret = enif_make_list(env, 0);
-    khash_t* khash;
+    khash_t* khash = NULL;
+    void* res = NULL;
     hscan_t scan;
     hnode_t* entry;
     khnode_t* node;
@@ -229,9 +230,11 @@ khash_to_list(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_hash, (void**) &khash)) {
+    if(!enif_get_resource(env, argv[0], priv->res_hash, &res)) {
         return enif_make_badarg(env);
     }
+
+    khash = (khash_t*) res;
 
     if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
@@ -255,15 +258,18 @@ static ERL_NIF_TERM
 khash_clear(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
-    khash_t* khash;
+    khash_t* khash = NULL;
+    void* res = NULL;
 
     if(argc != 1) {
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_hash, (void**) &khash)) {
+    if(!enif_get_resource(env, argv[0], priv->res_hash, &res)) {
         return enif_make_badarg(env);
     }
+
+    khash = (khash_t*) res;
 
     if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
@@ -291,7 +297,8 @@ static ERL_NIF_TERM
 khash_lookup(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
-    khash_t* khash;
+    khash_t* khash = NULL;
+    void* res = NULL;
     hnode_t* entry;
     khnode_t* node;
     ERL_NIF_TERM ret;
@@ -300,9 +307,11 @@ khash_lookup(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_hash, (void**) &khash)) {
+    if(!enif_get_resource(env, argv[0], priv->res_hash, &res)) {
         return enif_make_badarg(env);
     }
+
+    khash = (khash_t*) res;
 
     if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
@@ -325,7 +334,8 @@ static ERL_NIF_TERM
 khash_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
-    khash_t* khash;
+    khash_t* khash = NULL;
+    void* res = NULL;
     hnode_t* entry;
     khnode_t* node;
     ERL_NIF_TERM ret;
@@ -334,9 +344,11 @@ khash_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_hash, (void**) &khash)) {
+    if(!enif_get_resource(env, argv[0], priv->res_hash, &res)) {
         return enif_make_badarg(env);
     }
+
+    khash = (khash_t*) res;
 
     if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
@@ -358,7 +370,8 @@ static ERL_NIF_TERM
 khash_put(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
-    khash_t* khash;
+    khash_t* khash = NULL;
+    void* res = NULL;
     hnode_t* entry;
     khnode_t* node;
 
@@ -366,9 +379,11 @@ khash_put(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_hash, (void**) &khash)) {
+    if(!enif_get_resource(env, argv[0], priv->res_hash, &res)) {
         return enif_make_badarg(env);
     }
+
+    khash = (khash_t*) res;
 
     if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
@@ -398,7 +413,8 @@ static ERL_NIF_TERM
 khash_del(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
-    khash_t* khash;
+    khash_t* khash = NULL;
+    void* res = NULL;
     hnode_t* entry;
     ERL_NIF_TERM ret;
 
@@ -406,9 +422,11 @@ khash_del(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_hash, (void**) &khash)) {
+    if(!enif_get_resource(env, argv[0], priv->res_hash, &res)) {
         return enif_make_badarg(env);
     }
+
+    khash = (khash_t*) res;
 
     if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
@@ -438,7 +456,7 @@ khash_size(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_hash, (void**) &khash)) {
+    if(!enif_get_resource(env, argv[0], priv->res_hash, (void*) &khash)) {
         return enif_make_badarg(env);
     }
 
@@ -454,7 +472,8 @@ static ERL_NIF_TERM
 khash_iter(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
-    khash_t* khash;
+    khash_t* khash = NULL;
+    void* res = NULL;
     khash_iter_t* iter;
     ERL_NIF_TERM ret;
 
@@ -462,9 +481,11 @@ khash_iter(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_hash, (void**) &khash)) {
+    if(!enif_get_resource(env, argv[0], priv->res_hash, &res)) {
         return enif_make_badarg(env);
     }
+
+    khash = (khash_t*) res;
 
     if(!check_pid(env, khash)) {
         return enif_make_badarg(env);
@@ -501,7 +522,8 @@ static ERL_NIF_TERM
 khash_iter_next(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
-    khash_iter_t* iter;
+    khash_iter_t* iter = NULL;
+    void* res = NULL;
     hnode_t* entry;
     khnode_t* node;
     ERL_NIF_TERM key;
@@ -511,9 +533,11 @@ khash_iter_next(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!enif_get_resource(env, argv[0], priv->res_iter, (void**) &iter)) {
+    if(!enif_get_resource(env, argv[0], priv->res_iter, &res)) {
         return enif_make_badarg(env);
     }
+
+    iter = (khash_iter_t*) res;
 
     if(!check_pid(env, iter->khash)) {
         return enif_make_badarg(env);
