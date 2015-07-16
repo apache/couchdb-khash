@@ -294,6 +294,7 @@ khash_lookup(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
     khash_t* khash = NULL;
+    void* res = NULL;
     uint32_t hval;
     hnode_t* entry;
     khnode_t* node;
@@ -335,6 +336,7 @@ khash_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
     khash_t* khash = NULL;
+    void* res = NULL;
     uint32_t hval;
     hnode_t* entry;
     khnode_t* node;
@@ -375,6 +377,7 @@ khash_put(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     khash_priv* priv = enif_priv_data(env);
     khash_t* khash = NULL;
+    void* res = NULL;
     uint32_t hval;
     hnode_t* entry;
     khnode_t* node;
