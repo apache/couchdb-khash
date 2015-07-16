@@ -4,3 +4,4 @@ test/*.beam
 .eunit
 .rebar
 priv/*.so
+vc*.pdb
