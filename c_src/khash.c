@@ -9,6 +9,11 @@
 #include "erl_nif.h"
 #include "hash.h"
 
+#ifdef _WIN32
+#define INLINE __inline
+#else
+#define INLINE inline
+#endif
 
 #define KHASH_VERSION 0
 
@@ -53,7 +58,7 @@ typedef struct
 } khash_iter_t;
 
 
-static inline ERL_NIF_TERM
+static INLINE ERL_NIF_TERM
 make_atom(ErlNifEnv* env, const char* name)
 {
     ERL_NIF_TERM ret;
@@ -64,21 +69,21 @@ make_atom(ErlNifEnv* env, const char* name)
 }
 
 
-static inline ERL_NIF_TERM
+static INLINE ERL_NIF_TERM
 make_ok(ErlNifEnv* env, khash_priv* priv, ERL_NIF_TERM value)
 {
     return enif_make_tuple2(env, priv->atom_ok, value);
 }
 
 
-static inline ERL_NIF_TERM
+static INLINE ERL_NIF_TERM
 make_error(ErlNifEnv* env, khash_priv* priv, ERL_NIF_TERM reason)
 {
     return enif_make_tuple2(env, priv->atom_error, reason);
 }
 
 
-static inline int
+static INLINE int
 check_pid(ErlNifEnv* env, khash_t* khash)
 {
     ErlNifPid pid;
@@ -144,7 +149,7 @@ khash_hash_fun(const void* obj)
 }
 
 
-static inline khash_t*
+static INLINE khash_t*
 khash_create_int(ErlNifEnv* env, khash_priv* priv, ERL_NIF_TERM opts)
 {
     khash_t* khash = NULL;
@@ -278,7 +283,7 @@ khash_clear(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 
-static inline hnode_t*
+static INLINE hnode_t*
 khash_lookup_int(ErlNifEnv* env, uint32_t hv, ERL_NIF_TERM key, khash_t* khash)
 {
     khnode_t node;
