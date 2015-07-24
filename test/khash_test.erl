@@ -7,6 +7,7 @@
 -define(NUM_RAND_CYCLES, 10000).
 -define(NUM_CYCLES, 1000000).
 -define(NUM_KVS, 5000).
+-define(TIMEOUT, 15).
 
 load_test_() ->
     {
@@ -98,10 +99,10 @@ randomized_test_() ->
                 {ok, Actions, ?NUM_RAND_CYCLES, {Dict, KHash}}
             end,
             fun(State) ->
-                {
+                {timeout, ?TIMEOUT, {
                     "State matches dict implementation",
                     ?_assert(run_randomized(State, true))
-                }
+                }}
             end
         }
     }.
@@ -115,7 +116,7 @@ compare_dict_test_() ->
                 receive after 1000 -> ok end
             end,
             fun(ok) ->
-                [{
+                [{timeout, ?TIMEOUT, {
                     "Dict's fetch is slower than of khash",
                     ?_test(begin
                         {DTime, _} = timer:tc(fun() -> dict_fetch() end, []),
@@ -124,8 +125,8 @@ compare_dict_test_() ->
                         ?debugFmt("KHash: ~10b", [KTime]),
                         ?assert(DTime > KTime)
                     end)
-                },
-                {
+                }},
+                {timeout, ?TIMEOUT, {
                     "Dict's store is slower than of khash",
                     ?_test(begin
                         {DTime, _} = timer:tc(fun() -> dict_store() end, []),
@@ -134,7 +135,7 @@ compare_dict_test_() ->
                         ?debugFmt("KHash: ~10b", [KTime]),
                         ?assert(DTime > KTime)
                     end)
-                }]
+                }}]
             end
         }
     }.
