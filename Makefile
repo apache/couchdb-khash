@@ -1,32 +1,46 @@
-REBAR?=./rebar
+REBAR?=rebar
 
 
+.PHONY: all
+# target: all - Makes everything
 all: build
 
 
-clean:
-	$(REBAR) clean
-	rm -rf logs
-	rm -f test/*.beam
-
-
-distclean: clean
-	git clean -fxd
-
-
+.PHONY: build
+# target: build - Builds the project
 build:
 	$(REBAR) compile
 
 
+.PHONY: check
+# target: check - Checks if project builds and passes all the tests
+check: build eunit
+
+
+.PHONY: clean
+# target: clean - Removes build artifacts
+clean:
+	$(REBAR) clean
+	rm -f test/*.beam
+
+
+.PHONY: distclean
+# target: distclean - Removes all unversioned files
+distclean: clean
+	git clean -fxd
+
+
+.PHONY: eunit
+# target: eunit - Runs eunit test suite
 eunit:
 	$(REBAR) eunit
 
 
-check: build eunit
+.PHONY: help
+# target: help - Prints this help
+help:
+	@egrep "^# target:" Makefile | sed -e 's/^# target: //g' | sort
 
 
 %.beam: %.erl
 	erlc -o test/ $<
-
-
-.PHONY: all clean distclean build eunit check
