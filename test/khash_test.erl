@@ -107,39 +107,6 @@ randomized_test_() ->
         }
     }.
 
-compare_dict_test_() ->
-    {
-        "khash vs dict",
-        {setup,
-            fun() ->
-                % Let the VM settle for a bit
-                receive after 1000 -> ok end
-            end,
-            fun(ok) ->
-                [{timeout, ?TIMEOUT, {
-                    "Dict's fetch is slower than of khash",
-                    ?_test(begin
-                        {DTime, _} = timer:tc(fun() -> dict_fetch() end, []),
-                        {KTime, _} = timer:tc(fun() -> khash_fetch() end, []),
-                        ?debugFmt("Dict:  ~10b", [DTime]),
-                        ?debugFmt("KHash: ~10b", [KTime]),
-                        ?assert(DTime > KTime)
-                    end)
-                }},
-                {timeout, ?TIMEOUT, {
-                    "Dict's store is slower than of khash",
-                    ?_test(begin
-                        {DTime, _} = timer:tc(fun() -> dict_store() end, []),
-                        {KTime, _} = timer:tc(fun() -> khash_store() end, []),
-                        ?debugFmt("Dict:  ~10b", [DTime]),
-                        ?debugFmt("KHash: ~10b", [KTime]),
-                        ?assert(DTime > KTime)
-                    end)
-                }}]
-            end
-        }
-    }.
-
 basic_iterators_test_() ->
     {
         "khash itrators basics operations",
@@ -286,19 +253,6 @@ no_expiration_iterators_test_() ->
         }
     }.
 
-
-dict_fetch() ->
-    erlang:garbage_collect(),
-    List = kv_data(?NUM_KVS),
-    Dict = dict:from_list(List),
-    dict_fetch(Dict, ?NUM_CYCLES * 10).
-
-dict_fetch(_, 0) ->
-    ok;
-dict_fetch(Dict, NumCycles) ->
-    ?assertMatch(1, dict:fetch(1, Dict)),
-    dict_fetch(Dict, NumCycles - 1).
-
 khash_fetch() ->
     erlang:garbage_collect(),
     List = kv_data(?NUM_KVS),
@@ -310,17 +264,6 @@ khash_fetch(_, 0) ->
 khash_fetch(KHash, NumCycles) ->
     ?assertMatch(1, khash:get(KHash, 1)),
     khash_fetch(KHash, NumCycles - 1).
-
-dict_store() ->
-    List = kv_data(?NUM_KVS * 2),
-    Dict = dict:from_list(List),
-    dict_store(Dict, ?NUM_CYCLES).
-
-dict_store(_, 0) ->
-    ok;
-dict_store(Dict, NumCycles) ->
-    Dict2 = dict:store(1, 1, Dict),
-    dict_store(Dict2, NumCycles - 1).
 
 khash_store() ->
     List = kv_data(?NUM_KVS * 2),
