@@ -240,7 +240,7 @@ no_expiration_iterators_test_() ->
                     }
                 end,
                 fun({ok, H, I, Err}) ->
-                    {ok, I} = khash:iter(H),
+                    {ok, _OtherI} = khash:iter(H),
                     {foo, bar} = khash:iter_next(I),
                     end_of_table = khash:iter_next(I),
                     {
