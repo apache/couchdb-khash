@@ -42,18 +42,18 @@ gen_atom(MaxSize) ->
 
 
 gen_integer(_) ->
-    Value = case random:uniform() < 0.5 of
-        true -> random:uniform(127);
-        false -> random:uniform(16#FFFFFFFF)
+    Value = case random_uniform() < 0.5 of
+        true -> random_uniform(127);
+        false -> random_uniform(16#FFFFFFFF)
     end,
-    case random:uniform() < 0.5 of
+    case random_uniform() < 0.5 of
         true -> -1 * Value;
         false -> Value
     end.
 
 
 gen_float(_) ->
-    random:uniform() * float(16#FFFFFFFF).
+    random_uniform() * float(16#FFFFFFFF).
 
 
 gen_reference(_) ->
@@ -62,12 +62,12 @@ gen_reference(_) ->
 
 gen_port(_) ->
     Ports = erlang:ports(),
-    lists:nth(random:uniform(length(Ports)), Ports).
+    lists:nth(random_uniform(length(Ports)), Ports).
 
 
 gen_pid(_) ->
     Pids = erlang:processes(),
-    lists:nth(random:uniform(length(Pids)), Pids).
+    lists:nth(random_uniform(length(Pids)), Pids).
 
 
 gen_tuple(MaxSize) ->
@@ -75,18 +75,18 @@ gen_tuple(MaxSize) ->
 
 
 gen_list(MaxSize) ->
-    Width = random:uniform(MaxSize),
+    Width = random_uniform(MaxSize),
     [any(MaxSize-Width) || _ <- lists:seq(1, Width)].
 
 
 gen_short_string(_) ->
-    Size = random:uniform(255),
-    [random:uniform(127) || _ <- lists:seq(1, Size)].
+    Size = random_uniform(255),
+    [random_uniform(127) || _ <- lists:seq(1, Size)].
 
 
 gen_string(_) ->
-    Size = random:uniform(4096),
-    [random:uniform(127) || _ <- lists:seq(1, Size)].
+    Size = random_uniform(4096),
+    [random_uniform(127) || _ <- lists:seq(1, Size)].
 
 
 gen_binary(MaxSize) ->
@@ -99,7 +99,7 @@ gen_bitstring(MaxSize) ->
 
 
 gen_bignum(_) ->
-    16#FFFFFFFFFFFFFFFF + random:uniform(16#FFFFFFFF).
+    16#FFFFFFFFFFFFFFFF + random_uniform(16#FFFFFFFF).
 
 
 gen_function(_) ->
@@ -107,7 +107,7 @@ gen_function(_) ->
 
 
 choice(Options) ->
-    lists:nth(random:uniform(length(Options)), Options).
+    lists:nth(random_uniform(length(Options)), Options).
 
 
 value_types() ->
@@ -129,3 +129,12 @@ value_types() ->
 
 all_types() ->
     value_types() ++ [gen_tuple, gen_list].
+
+
+random_uniform() ->
+    Range = 1 bsl 32,
+    crypto:rand_uniform(0, Range) / Range.
+
+
+random_uniform(N) ->
+    crypto:rand_uniform(1, N + 1).
