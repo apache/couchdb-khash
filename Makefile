@@ -42,5 +42,3 @@ help:
 	@egrep "^# target:" Makefile | sed -e 's/^# target: //g' | sort
 
 
-%.beam: %.erl
-	erlc -o test/ $<
