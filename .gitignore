@@ -5,3 +5,4 @@ test/*.beam
 .rebar
 priv/*.so
 vc*.pdb
+compile_commands.json
