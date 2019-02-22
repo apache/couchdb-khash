@@ -1,6 +1,10 @@
 -module(khash_test).
 
--compile([export_all]).
+-export([
+    khash_fetch/0,
+    khash_store/0,
+    run_keys/1
+]).
 
 -include_lib("eunit/include/eunit.hrl").
 
