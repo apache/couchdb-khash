@@ -366,7 +366,7 @@ run_to_list({D, H}) ->
 weighted_choice(Items0) ->
     Items = lists:sort(Items0),
     Sum = lists:sum([W || {W, _} <- Items]),
-    Choice = khash_rand:uniform() * Sum,
+    Choice = rand:uniform() * Sum,
     weighted_choice(Items, 0.0, Choice).
 
 weighted_choice([], _, _) ->
@@ -378,7 +378,7 @@ weighted_choice([{_, I} | _], _, _) ->
 
 random_key(D) ->
     Keys = lists:usort(dict:fetch_keys(D) ++ [foo]),
-    lists:nth(khash_rand:uniform(length(Keys)), Keys).
+    lists:nth(rand:uniform(length(Keys)), Keys).
 
 random_val() ->
     gen_term:any().
