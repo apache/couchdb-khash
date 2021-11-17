@@ -6,3 +6,5 @@ test/*.beam
 priv/*.so
 vc*.pdb
 compile_commands.json
+_build/
+c_src/*.d
