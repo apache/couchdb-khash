@@ -1,4 +1,4 @@
--module(khash_test).
+-module(khash_tests).
 
 -export([
     khash_fetch/0,
