@@ -98,7 +98,7 @@ randomized_test_() ->
                     {1.0, fun run_put/1},
                     {1.0, fun run_del/1},
                     {0.5, fun run_size/1},
-                    % {0.3, fun run_keys/1},
+                    {0.3, fun run_keys/1},
                     {0.3, fun run_to_list/1}
                 ],
                 {ok, Actions, ?NUM_RAND_CYCLES, {Dict, KHash}}
@@ -310,7 +310,7 @@ validate_randomized_state({D, H}) ->
     DKVs == HKVs.
 
 run_clear({_D0, H}) ->
-    ?assertMatch(ok, khash:clear(H)),
+    ?assertEqual(ok, khash:clear(H)),
     {dict:new(), H}.
 
 run_get2({D, H}) ->
@@ -341,7 +341,7 @@ run_put({D0, H}) ->
     K = random_key(D0),
     V = random_val(),
     D1 = dict:store(K, V, D0),
-    ?assertMatch(ok, khash:put(H, K, V)),
+    ?assertEqual(ok, khash:put(H, K, V)),
     {D1, H}.
 
 run_del({D0, H}) ->
@@ -363,8 +363,7 @@ run_size({D, H}) ->
 
 run_keys({D, H}) ->
     DKeys = dict:fetch_keys(D),
-    {ok, HKeys0} = khash:keys(H),
-    HKeys = lists:sort(HKeys0),
+    HKeys = khash:fold(H, fun(K, _V, Acc) -> [K | Acc] end, []),
     ?assertEqual(lists:sort(DKeys), lists:sort(HKeys)),
     {D, H}.
 

@@ -77,7 +77,7 @@ get(Hash, Key, Default) ->
 put(Hash, Key, Value) ->
     put_int(Hash, erlang:phash2(Key), Key, Value).
 
--spec del(khash(), any()) -> ok.
+-spec del(khash(), any()) -> ok | not_found.
 del(Hash, Key) ->
     del_int(Hash, erlang:phash2(Key), Key).
 
