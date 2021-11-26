@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+
+  matrix_build:
+    strategy:
+      matrix:
+        otp-version: ['22', '23', '24']
+        # erlef/setup-beam action does not support macos yet
+        os: [ubuntu-latest, windows-latest]
+        rebar3-version: ['3.17']
+        include:
+          - otp-version: '21'
+            os: ubuntu-latest
+            rebar3-version: '3.15.2'
+          - otp-version: '21'
+            os: windows-latest
+            rebar3-version: '3.15.2'
+          - otp-version: '20'
+            os: ubuntu-latest
+            rebar3-version: '3.15.2'
+
+    runs-on: ${{ matrix.os }}
+    env:
+      # Define to something other than empty string to enable verbose rebar3 logging
+      DEBUG: ''
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - name: Setup Erlang
+        id: setup-beam
+        uses: ./.github/actions/setup-beam
+        with:
+          otp-version: ${{ matrix.otp-version }}
+          rebar3-version: ${{ matrix.rebar3-version }}
+      - name: Setup MSVC toolchain
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: ./.github/actions/msvc-dev-cmd
+      - name: Check coding style with erlfmt
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: rebar3 fmt --check
+        continue-on-error: true
+      - name: Compile
+        run: rebar3 compile
+      - name: EUnit tests
+        run: rebar3 eunit
+      - name: Restore dialyzer PLT from cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/rebar3/rebar3_*_plt
+          key: ${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}
+      - name: Run dialyzer analysis
+        run: rebar3 as test dialyzer
+      - name: Setup tmate session on job failure
+        uses: ./.github/actions/tmate
+        if: ${{ failure() }}
+        with:
+          limit-access-to-actor: true
+
