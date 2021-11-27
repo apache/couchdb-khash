@@ -1,4 +1,4 @@
--module(khash_test).
+-module(khash_tests).
 
 -export([
     khash_fetch/0,
@@ -22,7 +22,8 @@ load_test_() ->
 basic_test_() ->
     {
         "khash basic operations",
-        {setup,
+        {
+            setup,
             local,
             fun() -> khash:new() end,
             fun({ok, _}) -> ok end,
@@ -84,7 +85,8 @@ basic_test_() ->
 randomized_test_() ->
     {
         "khash randomized test",
-        {setup,
+        {
+            setup,
             local,
             fun() ->
                 Dict = dict:new(),
@@ -96,7 +98,7 @@ randomized_test_() ->
                     {1.0, fun run_put/1},
                     {1.0, fun run_del/1},
                     {0.5, fun run_size/1},
-                    % {0.3, fun run_keys/1},
+                    {0.3, fun run_keys/1},
                     {0.3, fun run_to_list/1}
                 ],
                 {ok, Actions, ?NUM_RAND_CYCLES, {Dict, KHash}}
@@ -113,7 +115,8 @@ randomized_test_() ->
 basic_iterators_test_() ->
     {
         "khash itrators basics operations",
-        {setup,
+        {
+            setup,
             local,
             fun() ->
                 {ok, H} = khash:new(),
@@ -123,9 +126,9 @@ basic_iterators_test_() ->
             end,
             fun({ok, H, I}) ->
                 [
-                   {
+                    {
                         "Got only kv pair as first element",
-                        ?_assertEqual(khash:iter_next(I), {foo,bar})
+                        ?_assertEqual(khash:iter_next(I), {foo, bar})
                     },
                     {
                         "Only the one kv pair exists",
@@ -134,8 +137,8 @@ basic_iterators_test_() ->
                     {
                         "Fold works",
                         ?_test(begin
-                            Fold = fun(K, V, Acc) -> [{K,V} | Acc] end,
-                            ?assertEqual(khash:fold(H, Fold, []), [{foo,bar}])
+                            Fold = fun(K, V, Acc) -> [{K, V} | Acc] end,
+                            ?assertEqual(khash:fold(H, Fold, []), [{foo, bar}])
                         end)
                     }
                 ]
@@ -146,12 +149,13 @@ basic_iterators_test_() ->
 multiread_iterators_test_() ->
     {
         "khash iterators multi-read test",
-        {setup,
+        {
+            setup,
             local,
             fun() ->
                 {ok, H} = khash:new(),
                 KVs = kv_data(10),
-                lists:foreach(fun({K,V}) -> khash:put(H, K, V) end, KVs),
+                lists:foreach(fun({K, V}) -> khash:put(H, K, V) end, KVs),
                 {ok, I} = khash:iter(H),
                 {ok, I, KVs}
             end,
@@ -167,7 +171,8 @@ multiread_iterators_test_() ->
 expiration_iterators_test_() ->
     {
         "khash iterators exipiration functions",
-        {foreach,
+        {
+            foreach,
             local,
             fun() ->
                 Err = {error, expired_iterator},
@@ -205,7 +210,8 @@ expiration_iterators_test_() ->
 no_expiration_iterators_test_() ->
     {
         "khash iterators no exipiration functions",
-        {foreach,
+        {
+            foreach,
             local,
             fun() ->
                 Err = {error, expired_iterator},
@@ -223,7 +229,7 @@ no_expiration_iterators_test_() ->
                     }
                 end,
                 fun({ok, H, I, Err}) ->
-                    {value, bar} = khash:lookup(H,foo),
+                    {value, bar} = khash:lookup(H, foo),
                     {
                         "lookup doesn't expire iterators",
                         ?_assertNot(khash:iter_next(I) == Err)
@@ -282,7 +288,7 @@ khash_store(KHash, NumCycles) ->
 khash_iterate(I, Acc) ->
     case khash:iter_next(I) of
         {K, V} ->
-            khash_iterate(I, [{K, V}|Acc]);
+            khash_iterate(I, [{K, V} | Acc]);
         end_of_table ->
             lists:sort(Acc)
     end.
@@ -304,7 +310,7 @@ validate_randomized_state({D, H}) ->
     DKVs == HKVs.
 
 run_clear({_D0, H}) ->
-    ?assertMatch(ok, khash:clear(H)),
+    ?assertEqual(ok, khash:clear(H)),
     {dict:new(), H}.
 
 run_get2({D, H}) ->
@@ -335,19 +341,20 @@ run_put({D0, H}) ->
     K = random_key(D0),
     V = random_val(),
     D1 = dict:store(K, V, D0),
-    ?assertMatch(ok, khash:put(H, K, V)),
+    ?assertEqual(ok, khash:put(H, K, V)),
     {D1, H}.
 
 run_del({D0, H}) ->
     K = random_key(D0),
-    D1 = case dict:is_key(K, D0) of
-        true ->
-            ?assertMatch(ok, khash:del(H, K)),
-            dict:erase(K, D0);
-        false ->
-            ?assertMatch(not_found, khash:del(H, K)),
-            D0
-    end,
+    D1 =
+        case dict:is_key(K, D0) of
+            true ->
+                ?assertMatch(ok, khash:del(H, K)),
+                dict:erase(K, D0);
+            false ->
+                ?assertMatch(not_found, khash:del(H, K)),
+                D0
+        end,
     {D1, H}.
 
 run_size({D, H}) ->
@@ -356,8 +363,7 @@ run_size({D, H}) ->
 
 run_keys({D, H}) ->
     DKeys = dict:fetch_keys(D),
-    {ok, HKeys0} = khash:keys(H),
-    HKeys = lists:sort(HKeys0),
+    HKeys = khash:fold(H, fun(K, _V, Acc) -> [K | Acc] end, []),
     ?assertEqual(lists:sort(DKeys), lists:sort(HKeys)),
     {D, H}.
 
@@ -376,7 +382,7 @@ weighted_choice(Items0) ->
 weighted_choice([], _, _) ->
     throw(bad_choice);
 weighted_choice([{W, _} | Rest], S, C) when W + S < C ->
-    weighted_choice(Rest, W+S, C);
+    weighted_choice(Rest, W + S, C);
 weighted_choice([{_, I} | _], _, _) ->
     I.
 
