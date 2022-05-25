@@ -6,3 +6,8 @@ test/*.beam
 priv/*.so
 vc*.pdb
 compile_commands.json
+
+.idea
+_build
+*.d
+*.lock
