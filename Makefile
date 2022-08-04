@@ -1,4 +1,4 @@
-REBAR?=rebar
+REBAR3?=rebar3
 
 
 .PHONY: all
@@ -9,7 +9,7 @@ all: build
 .PHONY: build
 # target: build - Builds the project
 build:
-	$(REBAR) compile
+	$(REBAR3) compile
 
 
 .PHONY: check
@@ -20,8 +20,9 @@ check: build eunit
 .PHONY: clean
 # target: clean - Removes build artifacts
 clean:
-	$(REBAR) clean
-	rm -f test/*.beam
+	$(REBAR3) clean
+	rm -rf _build priv
+	@[ -f *.lock ] && rm *.lock || true
 
 
 .PHONY: distclean
@@ -33,12 +34,10 @@ distclean: clean
 .PHONY: eunit
 # target: eunit - Runs eunit test suite
 eunit:
-	$(REBAR) eunit
+	$(REBAR3) eunit
 
 
 .PHONY: help
 # target: help - Prints this help
 help:
 	@egrep "^# target:" Makefile | sed -e 's/^# target: //g' | sort
-
-
