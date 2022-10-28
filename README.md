@@ -1,4 +1,3 @@
-khash
-=====
+## NOTE ##
 
-This is a basic NIF wrapper around Kazlib's hash data structure.
+Application was moved to the [main repository](https://github.com/apache/couchdb.git)
